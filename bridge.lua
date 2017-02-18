@@ -5,8 +5,6 @@ local stringx = require('pl.stringx')
 
 local bridge = {}
 
--- TCP ports linger 2 minutes after they're closed, kind of annoying
-local port = torch.random(40000, 50000)
 local zmq = require('lzmq')
 
 
@@ -85,7 +83,23 @@ local function serialize(arg)
   end
 end
 
+function bridge.get_free_port()
+  -- TCP ports linger 2 minutes after they're closed, kind of annoying
+  while true do
+    local port = torch.random(40000, 50000)
+    local context = zmq.context()
+    local requester, err = context:socket{zmq.REQ}
+    local success, err = requester:bind("tcp://*:" .. port)
+    if success then
+      requester:close()
+      return port
+    end
+    print(port .. ' is busy')    
+  end
+end
+
 function bridge.init()
+  local port = bridge.get_free_port()
   os.execute(string.format("python3 worker.py %d &", port))
 
   local context = zmq.context()
