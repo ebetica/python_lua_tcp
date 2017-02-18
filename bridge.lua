@@ -85,11 +85,17 @@ function bridge.eval(code, args)
   return deserialize(bridge.conn:recv())
 end
 
-function bridge.exec(code)
+function bridge.exec(code, args)
   -- Evaluate python code and returns serialized result
   -- Can serialize: lists, dicts, int, float, bool, string
   --      with arbitrary nesting
-  bridge.conn:send("x"..code)
+  if args then
+    for k, v in pairs(args) do
+      bridge.conn:send("x " .. k .. "=" .. serialize(v))
+      bridge.conn:recv()
+    end
+  end
+  bridge.conn:send("x "..code)
   bridge.conn:recv()
 end
 
