@@ -91,11 +91,11 @@ function bridge.exec(code, args)
   --      with arbitrary nesting
   if args then
     for k, v in pairs(args) do
-      bridge.conn:send("x " .. k .. "=" .. serialize(v))
+      bridge.conn:send("x" .. k .. "=" .. serialize(v))
       bridge.conn:recv()
     end
   end
-  bridge.conn:send("x "..code)
+  bridge.conn:send("x"..code)
   bridge.conn:recv()
 end
 
