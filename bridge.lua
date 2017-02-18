@@ -43,7 +43,6 @@ local function deserialize(arg)
     STRING_TO_LOAD = STRING_TO_LOAD .. OUT[i] .. "TENSORLST[" .. i .. "]"
   end
   STRING_TO_LOAD = STRING_TO_LOAD .. arg
-  print(STRING_TO_LOAD)
   local code = assert(loadstring("return " .. STRING_TO_LOAD))
   setfenv(code, {TENSORLST=TENSORLST})
   return code()
