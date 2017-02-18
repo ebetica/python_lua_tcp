@@ -9,8 +9,44 @@ local bridge = {}
 local port = torch.random(40000, 50000)
 local zmq = require('lzmq')
 
+
+local function byte2tensor(bytes)
+  local dim, ind = struct.unpack('l', bytes:sub(1, 8))
+  local size = {}
+  for i=1, dim do
+    size[#size+1] = struct.unpack('l', bytes:sub(i*8+1, i*8+9))
+  end
+  bytes = bytes:sub(dim*8+9)
+  local f = torch.MemoryFile()
+  f:binary()
+  f:writeString(bytes)
+  f:seek(1)
+  local tensor = torch.DoubleTensor(unpack(size))
+  tensor:storage():read(f)
+  return tensor
+end
+
 local function deserialize(arg)
-  return assert(loadstring("return " .. arg))()
+  local KEY = "TENSOR_BYTES"
+  local OUT = {}
+  local TENSORLST = {}
+  while true do
+    local s, e = arg:find(KEY)
+    if s == nil then break end
+    OUT[#OUT+1] = arg:sub(1, s-1)
+    local len = struct.unpack('l', arg:sub(e+1, e+8))
+    TENSORLST[#TENSORLST+1] = byte2tensor(arg:sub(e+9, e+9+len-1))
+    arg = arg:sub(e+9+len)
+  end
+  local STRING_TO_LOAD = ""
+  for i=1, #OUT do
+    STRING_TO_LOAD = STRING_TO_LOAD .. OUT[i] .. "TENSORLST[" .. i .. "]"
+  end
+  STRING_TO_LOAD = STRING_TO_LOAD .. arg
+  print(STRING_TO_LOAD)
+  local code = assert(loadstring("return " .. STRING_TO_LOAD))
+  setfenv(code, {TENSORLST=TENSORLST})
+  return code()
 end
 
 local function serialize(arg)
@@ -35,13 +71,14 @@ local function serialize(arg)
       return tbl .. '}'
     end
   elseif type(arg) == 'userdata' and string.find(arg:type(), "Tensor") then
+    -- Always serialized to a double array for now
     local f = torch.MemoryFile()
     f:binary()
     f:writeLong(arg:dim())
     for i = 1, arg:dim() do
       f:writeLong(arg:size(i))
     end
-    arg:contiguous():storage():write(f)
+    arg:double():contiguous():storage():write(f)
     data = f:storage():string()
     return 'TENSOR_BYTES' .. struct.pack('l', #data) .. data
   else
