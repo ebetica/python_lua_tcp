@@ -41,8 +41,6 @@ def serialize(x):
         return 'true' if x else 'false'
     elif isinstance(x, numbers.Number):
         return str(x)
-    elif isinstance(x, np.ndarray):
-        return 'nil'
     elif isinstance(x, collections.Mapping):
         return '{' + ",".join(['[{0}]={1}'.format(serialize(k), serialize(v))
                                for k, v in x.items()]) + '}'
